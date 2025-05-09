@@ -54,13 +54,13 @@ export default function ProductDetailScreen() {
   };
   
   const handleEdit = () => {
-    if (product) {
-      router.push({
-        pathname: '/product/edit',
-        params: { id: product.id }
-      });
+    if (!product?.id) {
+      Alert.alert('Erreur', 'Produit non chargé');
+      return;
     }
+    router.push(`/product/edit/${product.id}`);
   };
+  
   
   const handleDelete = async () => {
     try {

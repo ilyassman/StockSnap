@@ -5,19 +5,33 @@ export const Colors = {
     200: '#BFDBFE',
     300: '#93C5FD',
     400: '#60A5FA',
-    500: '#3B82F6',  // Main primary color
+    500: '#3B82F6', // Main primary color
     600: '#2563EB',
     700: '#1D4ED8',
     800: '#1E40AF',
     900: '#1E3A8A',
   },
+
+  danger: {
+    50: '#fef2f2',
+    100: '#fee2e2',
+    200: '#fecaca',
+    300: '#fca5a5',
+    400: '#f87171',
+    500: '#ef4444', // Couleur rouge pour danger
+    600: '#dc2626',
+    700: '#b91c1c',
+    800: '#991b1b',
+    900: '#7f1d1d',
+  },
+  
   secondary: {
     50: '#ECFEFF',
     100: '#CFFAFE',
     200: '#A5F3FC',
     300: '#67E8F9',
     400: '#22D3EE',
-    500: '#14B8A6',  // Main secondary color
+    500: '#14B8A6', // Main secondary color
     600: '#0891B2',
     700: '#0E7490',
     800: '#155E75',
@@ -29,7 +43,7 @@ export const Colors = {
     200: '#FED7AA',
     300: '#FDBA74',
     400: '#FB923C',
-    500: '#F97316',  // Main accent color
+    500: '#F97316', // Main accent color
     600: '#EA580C',
     700: '#C2410C',
     800: '#9A3412',
@@ -41,7 +55,7 @@ export const Colors = {
     200: '#BBF7D0',
     300: '#86EFAC',
     400: '#4ADE80',
-    500: '#22C55E',  // Main success color
+    500: '#22C55E', // Main success color
     600: '#16A34A',
     700: '#15803D',
     800: '#166534',
@@ -53,7 +67,7 @@ export const Colors = {
     200: '#FDE68A',
     300: '#FCD34D',
     400: '#FBBF24',
-    500: '#F59E0B',  // Main warning color
+    500: '#F59E0B', // Main warning color
     600: '#D97706',
     700: '#B45309',
     800: '#92400E',
@@ -65,7 +79,7 @@ export const Colors = {
     200: '#FECACA',
     300: '#FCA5A5',
     400: '#F87171',
-    500: '#EF4444',  // Main error color
+    500: '#EF4444', // Main error color
     600: '#DC2626',
     700: '#B91C1C',
     800: '#991B1B',

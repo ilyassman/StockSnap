@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  TextInput, 
-  Modal 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { Layout } from '../../constants/Layout';
-import { getProducts, getProductByBarcode } from '../../lib/firebase';
+import {
+  getProducts,
+  getProductByBarcode,
+  deleteProduct,
+} from '../../lib/firebase';
 import { Product } from '../../types';
 import { ProductCard } from '../../components/ProductCard';
 import { Scanner } from '../../components/Scanner';
 import { Button } from '../../components/Button';
-import { Search, Plus, ScanLine, X } from 'lucide-react-native';
+import { Search, Plus, ScanLine, X, Trash2, Edit } from 'lucide-react-native';
 
 export default function ProductsScreen() {
   const router = useRouter();
@@ -25,11 +31,12 @@ export default function ProductsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [scannerVisible, setScannerVisible] = useState(false);
-  
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     loadProducts();
   }, []);
-  
+
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -38,62 +45,125 @@ export default function ProductsScreen() {
       setFilteredProducts(productsData);
     } catch (error) {
       console.error('Error loading products:', error);
+      Alert.alert('Error', 'Failed to load products');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
-  
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadProducts();
+  };
+
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     if (text.trim() === '') {
       setFilteredProducts(products);
     } else {
-      const filtered = products.filter(product => 
-        product.name.toLowerCase().includes(text.toLowerCase()) ||
-        product.sku.toLowerCase().includes(text.toLowerCase()) ||
-        (product.barcode && product.barcode.includes(text))
+      const filtered = products.filter(
+        (product) =>
+          product.name.toLowerCase().includes(text.toLowerCase()) ||
+          product.sku.toLowerCase().includes(text.toLowerCase()) ||
+          (product.barcode && product.barcode.includes(text))
       );
       setFilteredProducts(filtered);
     }
   };
-  
+
   const handleScan = async (data: string) => {
     try {
       setScannerVisible(false);
-      
-      // Look for product with matching barcode
       const product = await getProductByBarcode(data);
-      
+
       if (product) {
         router.push(`/product/${product.id}`);
       } else {
-        // Product not found, redirect to add new product with barcode pre-filled
         router.push({
           pathname: '/product/new',
-          params: { barcode: data }
+          params: { barcode: data },
         });
       }
     } catch (error) {
       console.error('Error processing scan:', error);
+      Alert.alert('Error', 'Failed to process barcode scan');
     }
   };
-  
+
   const handleProductPress = (product: Product) => {
     router.push(`/product/${product.id}`);
   };
+
+  const handleEditProduct = (productId: string) => {
+    router.push(`/product/${productId}`);
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      Alert.alert(
+        'Delete Product',
+        'Are you sure you want to delete this product?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              await deleteProduct(productId);
+              loadProducts();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      Alert.alert('Error', 'Failed to delete product');
+    }
+  };
+
+  const renderProductItem = ({ item }: { item: Product }) => (
+    <View style={styles.productItemContainer}>
+      <TouchableOpacity
+        style={styles.productContent}
+        onPress={() => handleProductPress(item)}
+      >
+        <ProductCard product={item} onPress={() => handleProductPress(item)} />
+      </TouchableOpacity>
+
+      <View style={styles.productActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleEditProduct(item.id)}
+        >
+          <Edit size={20} color={Colors.primary[500]} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleDeleteProduct(item.id)}
+        >
+          <Trash2 size={20} color={Colors.danger[500]} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Products</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/product/new')}
         >
           <Plus size={20} color={Colors.white} />
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color={Colors.neutral[400]} />
@@ -110,7 +180,7 @@ export default function ProductsScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         <TouchableOpacity
           style={styles.scanButton}
           onPress={() => setScannerVisible(true)}
@@ -118,43 +188,46 @@ export default function ProductsScreen() {
           <ScanLine size={20} color={Colors.primary[500]} />
         </TouchableOpacity>
       </View>
-      
-      <FlatList
-        data={filteredProducts}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ProductCard product={item} onPress={handleProductPress} />
-        )}
-        contentContainerStyle={styles.productsList}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {loading 
-                ? 'Loading products...' 
-                : searchQuery 
-                  ? 'No products found matching your search' 
+
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary[500]} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          keyExtractor={(item) => item.id}
+          renderItem={renderProductItem}
+          contentContainerStyle={styles.productsList}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {loading
+                  ? 'Loading products...'
+                  : searchQuery
+                  ? 'No products found matching your search'
                   : 'No products available. Add your first product!'}
-            </Text>
-            {!loading && !searchQuery && (
-              <Button 
-                title="Add Product" 
-                onPress={() => router.push('/product/new')} 
-                style={styles.emptyButton}
-              />
-            )}
-          </View>
-        }
-      />
-      
+              </Text>
+              {!loading && !searchQuery && (
+                <Button
+                  title="Add Product"
+                  onPress={() => router.push('/product/new')}
+                  style={styles.emptyButton}
+                />
+              )}
+            </View>
+          }
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+        />
+      )}
+
       <Modal
         visible={scannerVisible}
         animationType="slide"
         onRequestClose={() => setScannerVisible(false)}
       >
-        <Scanner
-          onScan={handleScan}
-          onClose={() => setScannerVisible(false)}
-        />
+        <Scanner onScan={handleScan} onClose={() => setScannerVisible(false)} />
       </Modal>
     </View>
   );
@@ -223,6 +296,26 @@ const styles = StyleSheet.create({
   productsList: {
     padding: 20,
   },
+  productItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: Colors.white,
+    borderRadius: Layout.borderRadius.md,
+    overflow: 'hidden',
+    elevation: 1,
+  },
+  productContent: {
+    flex: 1,
+  },
+  productActions: {
+    flexDirection: 'row',
+    paddingRight: 10,
+  },
+  actionButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
   emptyContainer: {
     padding: 40,
     alignItems: 'center',
@@ -237,5 +330,10 @@ const styles = StyleSheet.create({
   },
   emptyButton: {
     marginTop: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

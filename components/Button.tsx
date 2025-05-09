@@ -1,11 +1,11 @@
 import React from 'react';
-import { 
-  TouchableOpacity, 
-  Text, 
-  StyleSheet, 
-  ActivityIndicator, 
-  ViewStyle, 
-  TextStyle 
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { Layout } from '../constants/Layout';
@@ -13,7 +13,7 @@ import { Layout } from '../constants/Layout';
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 
 interface ButtonProps {
-  title: string;
+  title?: string;
   onPress: () => void;
   variant?: ButtonVariant;
   loading?: boolean;
@@ -22,6 +22,7 @@ interface ButtonProps {
   textStyle?: TextStyle;
   fullWidth?: boolean;
   icon?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function Button({
@@ -33,21 +34,21 @@ export function Button({
   style,
   textStyle,
   fullWidth = false,
-  icon
+  icon,
 }: ButtonProps) {
   const buttonStyles = [
     styles.button,
     getVariantStyle(variant),
     fullWidth && styles.fullWidth,
     disabled && styles.disabled,
-    style
+    style,
   ];
 
   const textStyles = [
     styles.text,
     getTextStyle(variant),
     disabled && styles.disabledText,
-    textStyle
+    textStyle,
   ];
 
   return (
@@ -58,9 +59,13 @@ export function Button({
       activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator 
-          size="small" 
-          color={variant === 'outline' || variant === 'ghost' ? Colors.primary[500] : Colors.white} 
+        <ActivityIndicator
+          size="small"
+          color={
+            variant === 'outline' || variant === 'ghost'
+              ? Colors.primary[500]
+              : Colors.white
+          }
         />
       ) : (
         <>

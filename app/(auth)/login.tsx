@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { Link, router } from 'expo-router';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
@@ -25,7 +35,7 @@ export default function LoginScreen() {
 
     try {
       const { role } = await loginUser(email, password);
-      
+
       // Redirect based on role
       if (role === 'admin') {
         router.replace('/(admin)');
@@ -47,13 +57,15 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
           <Image
-            source={{ uri: 'https://images.pexels.com/photos/7983164/pexels-photo-7983164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
+            source={{
+              uri: 'https://images.pexels.com/photos/7983164/pexels-photo-7983164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+            }}
             style={styles.logoBackground}
           />
           <View style={styles.logoOverlay}>
@@ -64,8 +76,9 @@ export default function LoginScreen() {
 
         <View style={styles.formContainer}>
           <Text style={styles.title}>Sign In</Text>
-          <Text style={styles.subtitle}>Welcome back to StockSnap</Text>
-          
+          <Text style={styles.subtitle}>
+            Welcome back to StockSnap
+          </Text>
           {error && (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>

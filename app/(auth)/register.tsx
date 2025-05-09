@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { Link, router } from 'expo-router';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
@@ -51,13 +60,15 @@ export default function RegisterScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
           <Image
-            source={{ uri: 'https://images.pexels.com/photos/7983164/pexels-photo-7983164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
+            source={{
+              uri: 'https://images.pexels.com/photos/7983164/pexels-photo-7983164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+            }}
             style={styles.logoBackground}
           />
           <View style={styles.logoOverlay}>
@@ -67,9 +78,10 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.formContainer}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join StockSnap to manage your inventory</Text>
-          
+          <Text style={styles.title}>Create Account aa</Text>
+          <Text style={styles.subtitle}>
+            Join StockSnap to manage your inventory
+          </Text>
           {error && (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>

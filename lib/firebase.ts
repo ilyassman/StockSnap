@@ -3,6 +3,8 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User, Product, Customer, Sale, StockMovement } from '../types';
+import { cld } from './cloudinary';
+import * as FileSystem from 'expo-file-system';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -77,6 +79,35 @@ export const getUserRole = async (uid: string): Promise<string | null> => {
 };
 
 // Product functions
+
+export const uploadProductImage = async (uri: string): Promise<string> => {
+  try {
+    // Conversion en base64
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // Upload vers Cloudinary
+    const formData = new FormData();
+    formData.append('file', `data:image/jpeg;base64,${base64}`);
+    formData.append('upload_preset', 'products'); // Votre preset
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/ddp1u2upz/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+    return data.secure_url; // Retourne l'URL Cloudinary
+  } catch (error) {
+    console.error('Erreur upload Cloudinary:', error);
+    throw new Error("Échec de l'upload vers Cloudinary");
+  }
+};
+
 export const getProducts = async (): Promise<Product[]> => {
   const productsRef = collection(db, 'products');
   const q = query(productsRef, orderBy('name'));
@@ -114,27 +145,34 @@ export const getProductByBarcode = async (barcode: string): Promise<Product | nu
   } as Product;
 };
 
-export const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>, imageUri?: string): Promise<Product> => {
-  // Upload image if provided
-  let imageUrl;
-  if (imageUri) {
-    imageUrl = await uploadProductImage(imageUri);
-  }
-  
-  const productData = {
-    ...product,
-    imageUrl,
+
+
+export const addProduct = async (
+  productData: Omit<Product, 'id'>,
+  imageUri?: string
+): Promise<Product> => {
+  // 1. Upload vers Cloudinary si image existe
+  const imageUrl = imageUri ? await uploadProductImage(imageUri) : null;
+
+  // 2. Préparation des données pour Firebase
+  const productToAdd = {
+    ...productData,
+    imageUrl, // URL Cloudinary ou null
     createdAt: Timestamp.now().toMillis(),
     updatedAt: Timestamp.now().toMillis(),
   };
-  
-  const docRef = await addDoc(collection(db, 'products'), productData);
-  
-  return {
-    id: docRef.id,
-    ...productData,
-  } as Product;
+
+  // 3. Vérification finale
+  const finalData = {
+    ...productToAdd,
+    imageUrl: productToAdd.imageUrl || null, // Garantit null si undefined
+  };
+
+  const docRef = await addDoc(collection(db, 'products'), finalData);
+
+  return { id: docRef.id, ...finalData };
 };
+
 
 export const updateProduct = async (id: string, product: Partial<Product>, imageUri?: string): Promise<void> => {
   const productRef = doc(db, 'products', id);
@@ -156,16 +194,16 @@ export const deleteProduct = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'products', id));
 };
 
-const uploadProductImage = async (uri: string): Promise<string> => {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+// const uploadProductImage = async (uri: string): Promise<string> => {
+//   const response = await fetch(uri);
+//   const blob = await response.blob();
   
-  const filename = `products/${Date.now()}`;
-  const storageRef = ref(storage, filename);
+//   const filename = `products/${Date.now()}`;
+//   const storageRef = ref(storage, filename);
   
-  await uploadBytes(storageRef, blob);
-  return getDownloadURL(storageRef);
-};
+//   await uploadBytes(storageRef, blob);
+//   return getDownloadURL(storageRef);
+// };
 
 // Customer functions
 export const getCustomers = async (): Promise<Customer[]> => {

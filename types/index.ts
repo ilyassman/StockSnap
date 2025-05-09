@@ -17,9 +17,9 @@ export interface Product {
   stockQuantity: number;
   lowStockThreshold: number;
   category: string;
-  imageUrl?: string;
-  createdAt: number;
-  updatedAt: number;
+  imageUrl: string | null; // Soit une string, soit null, mais plus undefined
+  createdAt: number; // timestamp en millisecondes
+  updatedAt: number; // timestamp en millisecondes
   createdBy: string;
 }
 

@@ -1,37 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { Layout } from '../../constants/Layout';
-import { getTopSellingProducts, getLowStockProducts, getSalesStats, getCurrentUser } from '../../lib/firebase';
-import { User } from '../../types';
+import {
+  getTopSellingProducts,
+  getLowStockProducts,
+  getSalesStats,
+  getCurrentUser,
+} from '../../lib/firebase';
+import { User, Product } from '../../types';
 import { LineChart } from 'react-native-chart-kit';
-import { AlertTriangle, ArrowUpRight, BarChart3, TrendingUp, Package } from 'lucide-react-native';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  BarChart3,
+  TrendingUp,
+  Package,
+} from 'lucide-react-native';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [topProducts, setTopProducts] = useState<{ productId: string; productName: string; count: number }[]>([]);
-  const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [salesData, setSalesData] = useState<{ date: string; total: number }[]>([]);
-  
+  const [topProducts, setTopProducts] = useState<
+    { productId: string; productName: string; count: number }[]
+  >([]);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [salesData, setSalesData] = useState<{ date: string; total: number }[]>(
+    []
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        
+
         // Load user info
         const currentUser = await getCurrentUser();
         setUser(currentUser);
-        
+
         // Load dashboard data
         const topSellingProducts = await getTopSellingProducts(5);
         setTopProducts(topSellingProducts);
-        
+
         const lowStock = await getLowStockProducts(5);
         setLowStockProducts(lowStock);
-        
+
         const salesStats = await getSalesStats(7);
         setSalesData(salesStats);
       } catch (error) {
@@ -40,10 +63,10 @@ export default function DashboardScreen() {
         setLoading(false);
       }
     };
-    
+
     loadData();
   }, []);
-  
+
   const chartConfig = {
     backgroundGradientFrom: Colors.white,
     backgroundGradientTo: Colors.white,
@@ -57,11 +80,11 @@ export default function DashboardScreen() {
       stroke: Colors.primary[500],
     },
   };
-  
+
   const formatCurrency = (amount: number) => {
     return `$${amount.toFixed(2)}`;
   };
-  
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -69,58 +92,79 @@ export default function DashboardScreen() {
       </View>
     );
   }
-  
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello, {user?.displayName || 'User'}</Text>
+          <Text style={styles.greeting}>
+            Hello, {user?.displayName || 'User'}
+          </Text>
           <Text style={styles.date}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
           </Text>
         </View>
-        <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/settings')}>
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => router.push('/settings')}
+        >
           <Image
-            source={{ uri: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
+            source={{
+              uri: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+            }}
             style={styles.profileImage}
           />
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: Colors.primary[100] }]}>
+            <View
+              style={[
+                styles.statIconContainer,
+                { backgroundColor: Colors.primary[100] },
+              ]}
+            >
               <TrendingUp size={20} color={Colors.primary[500]} />
             </View>
             <Text style={styles.statValue}>$2,458.20</Text>
             <Text style={styles.statLabel}>Today's Sales</Text>
           </View>
-          
+
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: Colors.secondary[100] }]}>
+            <View
+              style={[
+                styles.statIconContainer,
+                { backgroundColor: Colors.secondary[100] },
+              ]}
+            >
               <BarChart3 size={20} color={Colors.secondary[500]} />
             </View>
             <Text style={styles.statValue}>28</Text>
             <Text style={styles.statLabel}>Total Orders</Text>
           </View>
         </View>
-        
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Sales Overview</Text>
           <TouchableOpacity>
             <Text style={styles.seeAllText}>Last 7 Days</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.chartContainer}>
           {salesData.length > 0 ? (
             <LineChart
               data={{
-                labels: salesData.map(item => item.date.split('-')[2]), // Just day number for clarity
+                labels: salesData.map((item) => item.date.split('-')[2]), // Just day number for clarity
                 datasets: [
                   {
-                    data: salesData.map(item => item.total),
+                    data: salesData.map((item) => item.total),
                   },
                 ],
               }}
@@ -139,14 +183,14 @@ export default function DashboardScreen() {
             </View>
           )}
         </View>
-        
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Top Selling Products</Text>
           <TouchableOpacity onPress={() => router.push('/products')}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.topProductsContainer}>
           {topProducts.length > 0 ? (
             topProducts.map((product, index) => (
@@ -158,30 +202,34 @@ export default function DashboardScreen() {
                   <Text style={styles.topProductName} numberOfLines={1}>
                     {product.productName}
                   </Text>
-                  <Text style={styles.topProductSold}>{product.count} sold</Text>
+                  <Text style={styles.topProductSold}>
+                    {product.count} sold
+                  </Text>
                 </View>
                 <ArrowUpRight size={18} color={Colors.primary[500]} />
               </View>
             ))
           ) : (
             <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No product sales data available</Text>
+              <Text style={styles.noDataText}>
+                No product sales data available
+              </Text>
             </View>
           )}
         </View>
-        
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Low Stock Alerts</Text>
           <TouchableOpacity onPress={() => router.push('/products')}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.lowStockContainer}>
           {lowStockProducts.length > 0 ? (
             lowStockProducts.map((product) => (
-              <TouchableOpacity 
-                key={product.id} 
+              <TouchableOpacity
+                key={product.id}
                 style={styles.lowStockItem}
                 onPress={() => router.push(`/product/${product.id}`)}
               >
@@ -193,7 +241,11 @@ export default function DashboardScreen() {
                     {product.name}
                   </Text>
                   <Text style={styles.lowStockQuantity}>
-                    Only <Text style={styles.lowStockCount}>{product.stockQuantity}</Text> left in stock
+                    Only{' '}
+                    <Text style={styles.lowStockCount}>
+                      {product.stockQuantity}
+                    </Text>{' '}
+                    left in stock
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -201,11 +253,13 @@ export default function DashboardScreen() {
           ) : (
             <View style={styles.noAlertsContainer}>
               <Package size={40} color={Colors.success[500]} />
-              <Text style={styles.noAlertsText}>All products are well stocked</Text>
+              <Text style={styles.noAlertsText}>
+                All products are well stocked
+              </Text>
             </View>
           )}
         </View>
-        
+
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
