@@ -57,30 +57,41 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
         style={styles.camera}
         facing={facing}
         barcodeScannerSettings={{
-          barcodeTypes: ['qr', 'ean13', 'ean8', 'code39', 'code128', 'upc_e'],
+          barcodeTypes: [
+            'qr',
+            'ean13',
+            'ean8',
+            'code39',
+            'code128',
+            'upc_e',
+            'ean13', // Standard produit
+            'upc_a', // Code UPC
+            'code128', // Générique
+            'itf14', // Carton
+          ],
         }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       >
         <View style={styles.overlay}>
           <View style={styles.scanFrame} />
         </View>
-        
+
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={Colors.white} />
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.footer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.flipButton}
             onPress={toggleCameraFacing}
           >
             <RotateCcw size={24} color={Colors.white} />
           </TouchableOpacity>
-          
+
           {scanned && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.scanAgainButton}
               onPress={() => setScanned(false)}
             >

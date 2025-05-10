@@ -20,6 +20,9 @@ import { Button } from '../../components/Button';
 import { Plus, X, ScanLine, Image as ImageIcon } from 'lucide-react-native';
 import { uploadProductImage } from '../../lib/firebase';
 import { Timestamp } from 'firebase/firestore';
+import { Modal } from 'react-native';
+import { Scanner } from '../../components/Scanner';
+
 
 
 export default function NewProductScreen() {
@@ -27,6 +30,8 @@ export default function NewProductScreen() {
   const params = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+
 
   const [product, setProduct] = useState<
     Omit<Product, 'id' | 'createdAt' | 'updatedAt'>
@@ -66,6 +71,12 @@ export default function NewProductScreen() {
       setImage(result.assets[0].uri);
     }
   };
+
+  const handleBarcodeScanned = (data: string) => {
+    handleChange('barcode', data);
+    setShowScanner(false);
+  };
+
 
  const handleSubmit = async () => {
    try {
@@ -175,7 +186,13 @@ export default function NewProductScreen() {
                 value={product.barcode}
                 onChangeText={(text) => handleChange('barcode', text)}
               />
-              <TouchableOpacity style={styles.scanButton}>
+              {/* <TouchableOpacity style={styles.scanButton}>
+                <ScanLine size={20} color={Colors.primary[500]} />
+              </TouchableOpacity> */}
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => setShowScanner(true)}
+              >
                 <ScanLine size={20} color={Colors.primary[500]} />
               </TouchableOpacity>
             </View>
@@ -266,6 +283,12 @@ export default function NewProductScreen() {
             />
           )}
         </Button>
+        <Modal visible={showScanner} animationType="slide">
+          <Scanner
+            onScan={handleBarcodeScanned}
+            onClose={() => setShowScanner(false)}
+          />
+        </Modal>
       </ScrollView>
     </View>
   );

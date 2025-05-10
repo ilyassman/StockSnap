@@ -17,6 +17,16 @@ import { Layout } from '../../../constants/Layout';
 import { Product } from '../../../types';
 import { Button } from '../../../components/Button';
 import { X, ScanLine, Image as ImageIcon } from 'lucide-react-native';
+
+// Ajoutez en haut du fichier
+import {
+  checkBarcodeExists,
+  linkProductToBarcode,
+  getProductByBarcode,
+} from '../../../lib/firebase';
+import { Modal } from 'react-native';
+import { Scanner } from '../../../components/Scanner';
+
 import {
   getProductById,
   updateProduct,
@@ -30,6 +40,8 @@ export default function EditProductScreen() {
   const [image, setImage] = useState<string | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+
 
   // Charger le produit existant
   useEffect(() => {
@@ -53,6 +65,9 @@ export default function EditProductScreen() {
     loadProduct();
   }, [id]);
 
+
+  
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -74,6 +89,11 @@ export default function EditProductScreen() {
       setImage(result.assets[0].uri);
       setCurrentImageUrl(null); // Reset l'URL existante si nouvelle image sélectionnée
     }
+  };
+
+  const handleBarcodeScanned = (data: string) => {
+    handleChange('barcode', data);
+    setShowScanner(false);
   };
 
   const handleSubmit = async () => {
@@ -129,11 +149,46 @@ export default function EditProductScreen() {
 
   // ... (imports restants identiques)
 
+
+  const handleBarcodeSubmit = async () => {
+    try {
+      setLoading(true);
+      if (product?.barcode) {
+        const existingProduct = await getProductByBarcode(product.barcode);
+        if (existingProduct && existingProduct.id !== product.id) {
+          Alert.alert(
+            'Code-barres existant',
+            `Ce code est déjà utilisé par: ${existingProduct.name}`,
+            [
+              { text: 'Annuler' },
+              {
+                text: 'Voir le produit',
+                onPress: () => router.push(`/product/${existingProduct.id}`),
+              },
+            ]
+          );
+          return;
+        }
+        await linkProductToBarcode(product.id, product.barcode);
+        Alert.alert('Succès', 'Code-barres lié avec succès');
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Erreur inconnue';
+      Alert.alert('Erreur', message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <X size={24} color={Colors.white} />
+        <TouchableOpacity
+          style={styles.scanButton}
+          onPress={() => setShowScanner(true)}
+        >
+          <ScanLine size={20} color={Colors.primary[500]} />
         </TouchableOpacity>
         <Text style={styles.title}>Modifier Produit</Text>
         <View style={{ width: 24 }} />
@@ -267,6 +322,15 @@ export default function EditProductScreen() {
           </View>
         </View>
 
+        {showScanner && (
+          <Modal visible={showScanner} animationType="slide">
+            <Scanner
+              onScan={handleBarcodeScanned}
+              onClose={() => setShowScanner(false)}
+            />
+          </Modal>
+        )}
+
         <View style={styles.formGroup}>
           <Text style={styles.label}>Catégorie</Text>
           <TextInput
@@ -381,5 +445,18 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 20,
+  },
+  // Ajoutez à votre StyleSheet
+  barcodeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  scanButton: {
+    position: 'absolute',
+    right: 10,
+    padding: 8,
+    backgroundColor: Colors.neutral[100],
+    borderRadius: Layout.borderRadius.sm,
   },
 });

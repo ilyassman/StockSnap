@@ -23,6 +23,7 @@ export interface Product {
   createdBy: string;
 }
 
+
 export interface Customer {
   id: string;
   name: string;

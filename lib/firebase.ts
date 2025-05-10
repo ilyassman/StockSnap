@@ -131,18 +131,25 @@ export const getProductById = async (id: string): Promise<Product | null> => {
   } as Product;
 };
 
-export const getProductByBarcode = async (barcode: string): Promise<Product | null> => {
-  const productsRef = collection(db, 'products');
-  const q = query(productsRef, where('barcode', '==', barcode));
-  const querySnapshot = await getDocs(q);
-  
-  if (querySnapshot.empty) return null;
-  
-  const doc = querySnapshot.docs[0];
-  return {
-    id: doc.id,
-    ...doc.data(),
-  } as Product;
+export const getProductByBarcode = async (
+  barcode: string
+): Promise<Product | null> => {
+  try {
+    const productsRef = collection(db, 'products');
+    const q = query(productsRef, where('barcode', '==', barcode));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) return null;
+
+    const doc = querySnapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as Product;
+  } catch (error) {
+    console.error('Error fetching product by barcode:', error);
+    return null;
+  }
 };
 
 
@@ -204,6 +211,39 @@ export const deleteProduct = async (id: string): Promise<void> => {
 //   await uploadBytes(storageRef, blob);
 //   return getDownloadURL(storageRef);
 // };
+
+
+// Vérifie si un code-barres existe déjà
+export const checkBarcodeExists = async (barcode: string): Promise<boolean> => {
+  const productsRef = collection(db, 'products');
+  const q = query(productsRef, where('barcode', '==', barcode));
+  const querySnapshot = await getDocs(q);
+  return !querySnapshot.empty;
+};
+
+// Lie un produit à son code-barres avec vérification
+export const linkProductToBarcode = async (productId: string, barcode: string): Promise<void> => {
+  try {
+    const exists = await checkBarcodeExists(barcode);
+    if (exists) {
+      throw new Error('Ce code-barres est déjà utilisé');
+    }
+
+    await updateDoc(doc(db, 'products', productId), {
+      barcode,
+      updatedAt: Timestamp.now().toMillis()
+    });
+
+    // Optionnel : enregistrement dans une collection dédiée
+    await setDoc(doc(db, 'barcodeIndex', barcode), {
+      productId,
+      lastUpdated: Timestamp.now()
+    });
+  } catch (error) {
+    console.error("Erreur liaison:", error);
+    throw error;
+  }
+};
 
 // Customer functions
 export const getCustomers = async (): Promise<Customer[]> => {
