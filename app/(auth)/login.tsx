@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -44,9 +43,30 @@ export default function LoginScreen() {
       } else {
         setError('Invalid user role');
       }
-    } catch (err) {
-      setError('Invalid email or password');
+    } catch (err: any) {
       console.error('Login error:', err);
+      
+      // Gestion spécifique des différents types d'erreurs Firebase
+      switch (err.code) {
+        case 'auth/too-many-requests':
+          setError('Too many login attempts. Please try again later or use "Forgot Password".');
+          break;
+        case 'auth/user-not-found':
+          setError('No account found with this email.');
+          break;
+        case 'auth/wrong-password':
+          setError('Invalid email or password.');
+          break;
+        case 'auth/invalid-email':
+          setError('Invalid email format.');
+          break;
+        default:
+          if (err.message.includes('verify your email')) {
+            setError('Please verify your email address first. Check your inbox for the verification link.');
+          } else {
+            setError('An error occurred. Please try again.');
+          }
+      }
     } finally {
       setLoading(false);
     }
@@ -76,9 +96,8 @@ export default function LoginScreen() {
 
         <View style={styles.formContainer}>
           <Text style={styles.title}>Sign In</Text>
-          <Text style={styles.subtitle}>
-            Welcome back to StockSnap
-          </Text>
+          <Text style={styles.subtitle}>Welcome back to StockSnap</Text>
+          
           {error && (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>
@@ -103,10 +122,12 @@ export default function LoginScreen() {
             secureTextEntry
             leftIcon={<Lock size={20} color={Colors.neutral[400]} />}
           />
-
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+          
+          <Link href="/forgot-password" asChild>
+            <TouchableOpacity style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </Link>
 
           <Button
             title="Sign In"
@@ -116,7 +137,7 @@ export default function LoginScreen() {
           />
 
           <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
+            <Text style={styles.signupText}>Don't have an account?{' '}</Text>
             <Link href="/register" asChild>
               <TouchableOpacity>
                 <Text style={styles.signupLink}>Create Account</Text>
@@ -186,6 +207,7 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.md,
     borderLeftWidth: 4,
     borderLeftColor: Colors.error[500],
+    zIndex: 1,
   },
   errorText: {
     color: Colors.error[700],

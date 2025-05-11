@@ -1,5 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut,
+  sendPasswordResetEmail,
+  sendEmailVerification
+} from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User, Product, Customer, Sale, StockMovement } from '../types';
@@ -25,10 +32,26 @@ const storage = getStorage(app);
 // Auth functions
 export const loginUser = async (email: string, password: string) => {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+  const user = userCredential.user;
+  
+  // Check if email is verified
+  if (!user.emailVerified) {
+    // Send another verification email if needed
+    await sendEmailVerification(user);
+    throw new Error('Please verify your email address. A new verification email has been sent.');
+  }
+
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
   
   if (!userDoc.exists()) {
     throw new Error('User document not found');
+  }
+  
+  // Update emailVerified status in Firestore if needed
+  if (user.emailVerified && !userDoc.data().emailVerified) {
+    await updateDoc(doc(db, 'users', user.uid), {
+      emailVerified: true
+    });
   }
   
   return {
@@ -41,15 +64,24 @@ export const registerUser = async (email: string, password: string, displayName:
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
   
-  // Create user document in Firestore
+  // Send verification email
+  await sendEmailVerification(user);
+    // Create user document in Firestore
   await setDoc(doc(db, 'users', user.uid), {
     email,
     displayName,
     role,
+    emailVerified: false,
     createdAt: Timestamp.now().toMillis(),
   });
   
-  return userCredential;
+  // Sign out immediately after registration to force email verification
+  await signOut(auth);
+  
+  return {
+    ...userCredential,
+    verificationEmailSent: true
+  };
 };
 
 export const logoutUser = () => {
@@ -76,6 +108,10 @@ export const getUserRole = async (uid: string): Promise<string | null> => {
   const userDoc = await getDoc(doc(db, 'users', uid));
   if (!userDoc.exists()) return null;
   return userDoc.data().role;
+};
+
+export const resetPassword = async (email: string) => {
+  return sendPasswordResetEmail(auth, email);
 };
 
 // Product functions

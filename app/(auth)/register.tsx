@@ -42,14 +42,19 @@ export default function RegisterScreen() {
     }
 
     setLoading(true);
-    setError(null);
-
-    try {
-      await registerUser(email, password, name, 'seller'); // Default role is seller
-      router.replace('/(tabs)');
-    } catch (err) {
-      setError('Registration failed. Please try again.');
+    setError(null);    try {
+      const result = await registerUser(email, password, name, 'seller');
+      setError('Registration successful! Please check your email to verify your account.');
+      setTimeout(() => {
+        router.replace('/login');
+      }, 3000);
+    } catch (err: any) {
       console.error('Registration error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please try logging in.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
