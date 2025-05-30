@@ -38,6 +38,11 @@ export interface CartItem {
   product: Product;
   quantity: number;
 }
+export interface CartItem {
+  product: Product;
+  quantity: number;
+  total: number;
+}
 
 export interface Sale {
   id: string;
@@ -74,8 +79,9 @@ export interface StockMovement {
 export type RootStackParamList = {
   '(auth)': undefined;
   '(tabs)': undefined;
-  'product/[id]': { id: string };
-  'customer/[id]': { id: string };
-  'sale/[id]': { id: string };
-  modal: undefined;
+  '/(tabs)/sales': undefined;
+  '/(tabs)/sales/[id]': { id: string };
+  '/(tabs)/products/[id]': { id: string };
+  '/(tabs)/customers/[id]': { id: string };
+  '/(tabs)/modal': undefined;
 };
