@@ -478,36 +478,47 @@ export const getTopSellingProducts = async (limit_count: number = 5): Promise<{ 
 };
 
 export const getSalesStats = async (days: number = 7): Promise<{ date: string; total: number }[]> => {
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  const startTimestamp = startDate.getTime();
-  
-  const salesRef = collection(db, 'sales');
-  const q = query(
-    salesRef,
-    where('createdAt', '>=', startTimestamp),
-    orderBy('createdAt', 'asc')
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  const salesByDate: Record<string, number> = {};
-  
-  // Initialize all dates
-  for (let i = 0; i <= days; i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
-    const dateStr = date.toISOString().split('T')[0];
-    salesByDate[dateStr] = 0;
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    // Format YYYY-MM-DD pour les dates
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+    const salesRef = collection(db, 'sales');
+    const q = query(
+      salesRef,
+      where('createdAt', '>=', startDate.getTime()),
+      where('createdAt', '<=', endDate.getTime()),
+      orderBy('createdAt', 'asc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const salesByDate: Record<string, number> = {};
+
+    // Initialiser toutes les dates avec 0
+    for (let i = 0; i <= days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      salesByDate[formatDate(date)] = 0;
+    }
+
+    // Remplir avec les données réelles
+    querySnapshot.forEach((doc) => {
+      const sale = doc.data() as Sale;
+      const saleDate = new Date(sale.createdAt);
+      const dateKey = formatDate(saleDate);
+      salesByDate[dateKey] = (salesByDate[dateKey] || 0) + sale.total;
+    });
+
+    // Convertir en tableau et trier par date
+    return Object.entries(salesByDate)
+      .map(([date, total]) => ({ date, total }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  } catch (error) {
+    console.error("Error fetching sales stats:", error);
+    return [];
   }
-  
-  // Populate with actual data
-  querySnapshot.docs.forEach(doc => {
-    const sale = doc.data() as Sale;
-    const date = new Date(sale.createdAt);
-    const dateStr = date.toISOString().split('T')[0];
-    salesByDate[dateStr] = (salesByDate[dateStr] || 0) + sale.total;
-  });
-  
-  return Object.entries(salesByDate).map(([date, total]) => ({ date, total }));
 };

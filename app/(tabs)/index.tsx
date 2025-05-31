@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -16,21 +17,26 @@ import {
   getLowStockProducts,
   getSalesStats,
   getCurrentUser,
+  getSales,
 } from '../../lib/firebase';
-import { User, Product } from '../../types';
-import { LineChart } from 'react-native-chart-kit';
+import { User, Product, Sale } from '../../types';
+import { LineChart, BarChart } from 'react-native-chart-kit';
 import {
   AlertTriangle,
   ArrowUpRight,
   BarChart3,
   TrendingUp,
   Package,
+  CircleDollarSign,
+  ShoppingCart,
+  RefreshCw,
 } from 'lucide-react-native';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [topProducts, setTopProducts] = useState<
     { productId: string; productName: string; count: number }[]
   >([]);
@@ -38,34 +44,57 @@ export default function DashboardScreen() {
   const [salesData, setSalesData] = useState<{ date: string; total: number }[]>(
     []
   );
+  const [todaySales, setTodaySales] = useState<number>(0);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [totalRevenue, setTotalRevenue] = useState<number>(0);
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line');
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      // Load user info
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+
+      // Load dashboard data
+      const topSellingProducts = await getTopSellingProducts(5);
+      setTopProducts(topSellingProducts);
+
+      const lowStock = await getLowStockProducts(5);
+      setLowStockProducts(lowStock);
+
+      const salesStats = await getSalesStats(7);
+      setSalesData(salesStats);
+
+      // Calculate today's sales and total orders
+      const today = new Date().toISOString().split('T')[0];
+      const todayStats = salesStats.find(stat => stat.date === today);
+      setTodaySales(todayStats?.total || 0);
+
+      // Get all sales to calculate total orders and revenue
+      const allSales = await getSales();
+      setTotalOrders(allSales.length);
+      
+      const revenue = allSales.reduce((sum, sale) => sum + sale.total, 0);
+      setTotalRevenue(revenue);
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-
-        // Load user info
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-
-        // Load dashboard data
-        const topSellingProducts = await getTopSellingProducts(5);
-        setTopProducts(topSellingProducts);
-
-        const lowStock = await getLowStockProducts(5);
-        setLowStockProducts(lowStock);
-
-        const salesStats = await getSalesStats(7);
-        setSalesData(salesStats);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   const chartConfig = {
     backgroundGradientFrom: Colors.white,
@@ -79,13 +108,25 @@ export default function DashboardScreen() {
       strokeWidth: '2',
       stroke: Colors.primary[500],
     },
+    decimalPlaces: 0,
+    style: {
+      borderRadius: 16,
+    },
+    propsForLabels: {
+      fontSize: 10,
+    },
   };
 
   const formatCurrency = (amount: number) => {
     return `$${amount.toFixed(2)}`;
   };
 
-  if (loading) {
+  const formatShortDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+  };
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary[500]} />
@@ -121,7 +162,18 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary[500]]}
+            tintColor={Colors.primary[500]}
+          />
+        }
+      >
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <View
@@ -132,7 +184,7 @@ export default function DashboardScreen() {
             >
               <TrendingUp size={20} color={Colors.primary[500]} />
             </View>
-            <Text style={styles.statValue}>$2,458.20</Text>
+            <Text style={styles.statValue}>{formatCurrency(todaySales)}</Text>
             <Text style={styles.statLabel}>Today's Sales</Text>
           </View>
 
@@ -143,43 +195,114 @@ export default function DashboardScreen() {
                 { backgroundColor: Colors.secondary[100] },
               ]}
             >
-              <BarChart3 size={20} color={Colors.secondary[500]} />
+              <ShoppingCart size={20} color={Colors.secondary[500]} />
             </View>
-            <Text style={styles.statValue}>28</Text>
+            <Text style={styles.statValue}>{totalOrders}</Text>
             <Text style={styles.statLabel}>Total Orders</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <View
+              style={[
+                styles.statIconContainer,
+                { backgroundColor: Colors.success[100] },
+              ]}
+            >
+              <CircleDollarSign size={20} color={Colors.success[500]} />
+            </View>
+            <Text style={styles.statValue}>{formatCurrency(totalRevenue)}</Text>
+            <Text style={styles.statLabel}>Total Revenue</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <View
+              style={[
+                styles.statIconContainer,
+                { backgroundColor: Colors.warning[100] },
+              ]}
+            >
+              <AlertTriangle size={20} color={Colors.warning[500]} />
+            </View>
+            <Text style={styles.statValue}>{lowStockProducts.length}</Text>
+            <Text style={styles.statLabel}>Low Stock Items</Text>
           </View>
         </View>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Sales Overview</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>Last 7 Days</Text>
-          </TouchableOpacity>
+          <View style={styles.chartToggleContainer}>
+            <TouchableOpacity 
+              style={[styles.chartToggle, chartType === 'line' && styles.chartToggleActive]}
+              onPress={() => setChartType('line')}
+            >
+              <Text style={[styles.chartToggleText, chartType === 'line' && styles.chartToggleTextActive]}>Line</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.chartToggle, chartType === 'bar' && styles.chartToggleActive]}
+              onPress={() => setChartType('bar')}
+            >
+              <Text style={[styles.chartToggleText, chartType === 'bar' && styles.chartToggleTextActive]}>Bar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.chartContainer}>
           {salesData.length > 0 ? (
-            <LineChart
-              data={{
-                labels: salesData.map((item) => item.date.split('-')[2]), // Just day number for clarity
-                datasets: [
-                  {
-                    data: salesData.map((item) => item.total),
-                  },
-                ],
-              }}
-              width={Layout.window.width - 40}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={{
-                borderRadius: 16,
-              }}
-              formatYLabel={(value) => formatCurrency(parseFloat(value))}
-            />
+            chartType === 'line' ? (
+              <LineChart
+                data={{
+                  labels: salesData.map((item) => formatShortDate(item.date)),
+                  datasets: [
+                    {
+                      data: salesData.map((item) => item.total),
+                      color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                      strokeWidth: 2,
+                    },
+                  ],
+                }}
+                width={Layout.window.width - 40}
+                height={220}
+                chartConfig={chartConfig}
+                bezier
+                style={{
+                  borderRadius: 16,
+                }}
+                formatYLabel={(value) => formatCurrency(parseFloat(value))}
+                yAxisLabel="$"
+                yAxisSuffix=""
+                yAxisInterval={1}
+              />
+            ) : (
+              <BarChart
+                data={{
+                  labels: salesData.map((item) => formatShortDate(item.date)),
+                  datasets: [
+                    {
+                      data: salesData.map((item) => item.total),
+                    },
+                  ],
+                }}
+                width={Layout.window.width - 40}
+                height={220}
+                chartConfig={chartConfig}
+                style={{
+                  borderRadius: 16,
+                }}
+                yAxisLabel="$"
+                yAxisSuffix=""
+                showValuesOnTopOfBars
+                fromZero
+              />
+            )
           ) : (
             <View style={styles.noDataContainer}>
+              <RefreshCw size={24} color={Colors.neutral[400]} />
               <Text style={styles.noDataText}>No sales data available</Text>
+              <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+                <Text style={styles.refreshButtonText}>Refresh Data</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -194,7 +317,11 @@ export default function DashboardScreen() {
         <View style={styles.topProductsContainer}>
           {topProducts.length > 0 ? (
             topProducts.map((product, index) => (
-              <View key={product.productId} style={styles.topProductItem}>
+              <TouchableOpacity 
+                key={product.productId} 
+                style={styles.topProductItem}
+                onPress={() => router.push(`/product/${product.productId}`)}
+              >
                 <View style={styles.topProductRank}>
                   <Text style={styles.topProductRankText}>{index + 1}</Text>
                 </View>
@@ -207,10 +334,11 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
                 <ArrowUpRight size={18} color={Colors.primary[500]} />
-              </View>
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.noDataContainer}>
+              <Package size={24} color={Colors.neutral[400]} />
               <Text style={styles.noDataText}>
                 No product sales data available
               </Text>
@@ -245,7 +373,7 @@ export default function DashboardScreen() {
                     <Text style={styles.lowStockCount}>
                       {product.stockQuantity}
                     </Text>{' '}
-                    left in stock
+                    left in stock (Threshold: {product.lowStockThreshold})
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -318,7 +446,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: -30,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   statCard: {
     backgroundColor: Colors.white,
@@ -377,6 +505,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     alignItems: 'center',
+    minHeight: 280,
+    justifyContent: 'center',
+  },
+  chartToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.neutral[100],
+    borderRadius: Layout.borderRadius.md,
+    padding: 2,
+  },
+  chartToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Layout.borderRadius.sm,
+  },
+  chartToggleActive: {
+    backgroundColor: Colors.primary[500],
+  },
+  chartToggleText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: Colors.neutral[600],
+  },
+  chartToggleTextActive: {
+    color: Colors.white,
   },
   topProductsContainer: {
     backgroundColor: Colors.white,
@@ -477,6 +629,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: Colors.neutral[500],
     textAlign: 'center',
+    marginTop: 8,
   },
   noAlertsContainer: {
     paddingVertical: Layout.spacing.xl,
@@ -491,5 +644,16 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  refreshButton: {
+    marginTop: 16,
+    padding: 8,
+    backgroundColor: Colors.primary[100],
+    borderRadius: Layout.borderRadius.md,
+  },
+  refreshButtonText: {
+    color: Colors.primary[600],
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
   },
 });
