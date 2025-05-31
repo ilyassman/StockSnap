@@ -7,7 +7,7 @@ import { Receipt, ChevronRight } from 'lucide-react-native';
 
 interface SaleCardProps {
   sale: Sale;
-  onPress: (sale: Sale) => void;
+  onPress: (sale: Sale) => void ;
 }
 
 export function SaleCard({ sale, onPress }: SaleCardProps) {

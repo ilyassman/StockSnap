@@ -167,7 +167,7 @@ export default function ProductsScreen() {
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color={Colors.neutral[400]} />
-          <TextInput
+          <TextInputa
             style={styles.searchInput}
             placeholder="Search products..."
             placeholderTextColor={Colors.neutral[400]}
